@@ -23,17 +23,31 @@ Unity Hub에서 6000.3.9f1 버전으로 프로젝트를 엽니다.
 
 ## 폴더 구조
 
+Unity URP 템플릿이 기본으로 생성하는 `Settings`, `TutorialInfo`, `InputSystem_Actions`, `Readme`, `Scenes` 등은 그대로 두고 손대지 않습니다. 우리가 작업하는 영역은 `_Art`와 `_ArtTest` 두 폴더로 한정합니다.
+
 ```
 Assets/
-├── Shaders/      셰이더 (HLSL / Shader Graph)
-├── Materials/     머티리얼
-├── Prefabs/       프리팹 (건물 모듈, VFX 등)
-├── Models/        3D 모델 (FBX)
-├── Textures/       텍스처
-├── Scenes/        씬 파일
-├── Scripts/        C# 스크립트
-└── VFX/           VFX Graph
+├── Settings/          Unity 기본 생성 — 손대지 않음
+├── TutorialInfo/       Unity 기본 생성 — 손대지 않음
+├── InputSystem_Actions Unity 기본 생성 — 손대지 않음
+├── Readme              Unity 기본 생성 — 손대지 않음
+├── Scenes/             Unity 기본 생성 — 손대지 않음
+│
+├── _Art/               아트팀 실 사용 리소스
+│   ├── Shaders/         셰이더 (HLSL / Shader Graph)
+│   ├── Materials/       머티리얼
+│   ├── Models/          3D 모델 (FBX)
+│   ├── Textures/        텍스처
+│   ├── Prefabs/         건물·네온·VFX 등 실제 사용 프리팹
+│   └── VFX/             VFX Graph
+│
+└── _ArtTest/            아트팀 테스트 전용 (프로그램팀 리소스와 분리)
+    ├── Scenes/           테스트 씬
+    ├── Scripts/          카메라·플레이어 등 테스트용 스크립트
+    └── Prefabs/          테스트용 프리팹 (카메라 리그, 플레이어 캡슐 등)
 ```
+
+**원칙** — 언더스코어(`_`)가 붙은 폴더만 직접 작업하는 영역입니다. 그 외 폴더는 Unity가 자동 생성한 기본 구조이므로 이동·삭제하지 않습니다. 추후 프로그래밍팀 합류 시 별도 폴더(`_Program` 등)로 추가되며, `_Art` / `_ArtTest`와 충돌하지 않도록 설계했습니다.
 
 ## 커밋 규칙
 
@@ -52,30 +66,42 @@ refactor: 코드 구조 개선 (기능 변화 없음)
 
 ## 브랜치 규칙
 
-작업은 `main`에서 계속 진행하고, PART 단계가 끝나는 시점마다 그 상태를 스냅샷으로 보존하기 위해 브랜치를 분리합니다. 머지는 하지 않습니다.
+PART 단계별로 브랜치를 순차적으로 분기하며, 각 브랜치에서 직접 작업·커밋·푸시한다. 이전 브랜치의 내용을 이어받아 누적되는 방식이다.
 
 ```
-main      최종 작업 브랜치 (계속 갱신)
-part-0    PART 0 완료 시점
-part-1    PART 1 완료 시점
-part-2    PART 2 완료 시점
-part-3    PART 3 완료 시점
-part-4    PART 4 완료 시점
+part-1                  PART 1 작업 (최초 브랜치)
+part-2 (part-1에서 분기)  PART 2 작업
+part-3 (part-2에서 분기)  PART 3 작업
+part-4 (part-3에서 분기)  PART 4 작업
 ```
 
-GitHub Desktop에서 PART가 끝난 직후, 다음 PART 작업을 시작하기 전에 분기합니다.
+**진행 순서**
+
+1. `part-1` 브랜치 생성 → PART 1 작업 → 커밋 → Push
+2. PART 1 완료 후 `part-1`에서 `part-2` 분기 → PART 2 작업 → 커밋 → Push
+3. PART 2 완료 후 `part-2`에서 `part-3` 분기 → 반복
+4. 마지막 PART까지 동일하게 진행
+
+**GitHub Desktop에서 다음 PART 브랜치 분기하는 순서**
 
 ```
-Current Branch → New Branch → 이름 입력 (예: part-1) → Create Branch → Publish branch
+현재 PART 브랜치에서 작업 완료 + 커밋 + Push 확인
+→ Current Branch 클릭 → New Branch
+→ 이름 입력 (예: part-2) → Create Branch
+→ Publish branch
+→ 이 브랜치에서 다음 PART 작업 계속
 ```
 
-이후 다시 main으로 돌아와 작업을 이어갑니다.
+**최종 main 머지 (전체 작업 완료 시 1회만)**
 
 ```
-Current Branch → main 선택
+Current Branch → main으로 전환
+→ Branch 메뉴 → Merge into current branch
+→ 마지막 PART 브랜치 선택 (예: part-4)
+→ Merge → Push origin
 ```
 
-각 단계별 진행 상황은 브랜치 목록에서 그대로 확인할 수 있습니다.
+머지 이후 `main`은 최종 완성 상태가 되며, `part-1`~`part-4`는 각 단계별 스냅샷으로 보존된다.
 
 ## 문서
 
