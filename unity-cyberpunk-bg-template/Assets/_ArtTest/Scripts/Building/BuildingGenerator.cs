@@ -100,14 +100,6 @@ public class BuildingGenerator : MonoBehaviour
     [Tooltip("0부터 시작 — 0이면 아틀라스 맨 위 칸(1번째 디자인)")]
     public int signboardDesignIndex = 0;
 
-    [Header("아웃라인 (Inverted Hull) — 건물 단위 on/off")]
-    [Tooltip("켜면 Core/Attachment 메쉬에 자동으로 OutlineToggle을 붙여서 아웃라인을 적용")]
-    public bool useOutline = false;
-    [Tooltip("Outline 셰이더 그래프로 만든 머티리얼")]
-    public Material outlineMaterial;
-    public float outlineWidth = 0.02f;
-    public Color outlineColor = Color.black;
-
     private float WidthScale => style == null ? 1f : widthMeters / style.baseModuleWidth;
     private int ModuleCount => style == null ? 0 : Mathf.RoundToInt(widthMeters / style.baseModuleWidth);
     private int DepthModuleCount => style == null ? 0 : Mathf.RoundToInt(style.buildingDepth / style.baseModuleWidth);
@@ -162,7 +154,6 @@ public class BuildingGenerator : MonoBehaviour
         // ---------------------------------------------------
         GameObject lobbyInstance = SpawnModule(style.lobbyPrefab, currentY, widthScale, "Lobby");
         ApplyMaterial(lobbyInstance, ModuleId.Lobby, new Vector2(widthScale, style.lobbyHeight / style.baseModuleHeight), lobbyColor);
-        ApplyOutlineIfEnabled(lobbyInstance, "Lobby_Mesh");
         if (lobbyInstance != null)
             GenerateLobbyAttachments(lobbyInstance.transform);
         currentY += style.lobbyHeight;
@@ -173,7 +164,6 @@ public class BuildingGenerator : MonoBehaviour
         {
             GameObject lobbyFloorLine = SpawnModule(style.floorLinePrefab, currentY, widthScale, "FloorLine_Lobby");
             ApplyMaterial(lobbyFloorLine, ModuleId.FloorLine, new Vector2(widthScale, 1f));
-            ApplyOutlineIfEnabled(lobbyFloorLine, "FloorLine_Lobby_Mesh");
         }
 
         // ---------------------------------------------------
@@ -183,7 +173,6 @@ public class BuildingGenerator : MonoBehaviour
         {
             GameObject middleInstance = SpawnModule(style.middlePrefab, currentY, widthScale, $"Middle_{floor:00}");
             ApplyMaterial(middleInstance, ModuleId.Middle, new Vector2(widthScale, style.middleHeight / style.baseModuleHeight), bodyColor);
-            ApplyOutlineIfEnabled(middleInstance, $"Middle_{floor:00}_Mesh");
             Transform middleParent = middleInstance != null ? middleInstance.transform : transform;
 
             if (useWindow)
@@ -206,7 +195,6 @@ public class BuildingGenerator : MonoBehaviour
                 // 그래서 currentY를 올리지 않고, 같은 경계 높이에 겹쳐서 붙인다.
                 GameObject floorLine = SpawnModule(style.floorLinePrefab, currentY, widthScale, $"FloorLine_{floor:00}");
                 ApplyMaterial(floorLine, ModuleId.FloorLine, new Vector2(widthScale, 1f));
-                ApplyOutlineIfEnabled(floorLine, $"FloorLine_{floor:00}_Mesh");
             }
         }
 
@@ -216,14 +204,12 @@ public class BuildingGenerator : MonoBehaviour
         // ---------------------------------------------------
         GameObject roofInstance = SpawnModule(style.roofPrefab, currentY, widthScale, "RoofCore");
         ApplyMaterial(roofInstance, ModuleId.RoofCore, new Vector2(widthScale, style.roofHeight / style.baseModuleHeight), bodyColor);
-        ApplyOutlineIfEnabled(roofInstance, "RoofCore_Mesh");
 
         if (style.roofOverhangPrefab != null)
         {
             // Front — LBK 피봇이라 별도 Z오프셋 없이 그대로 붙으면 돌출 방향이 맞음
             GameObject overhangFront = SpawnModule(style.roofOverhangPrefab, currentY, widthScale, "RoofOverhang_Front");
             ApplyMaterial(overhangFront, ModuleId.RoofOverhang, new Vector2(widthScale, 1f));
-            ApplyOutlineIfEnabled(overhangFront, "RoofOverhang_Front_Mesh");
 
             // Back — 같은 프리팹을 180도 회전해서 반대편에 붙임.
             // 180도 회전하면 모델이 펼쳐지는 방향(local +X)도 같이 뒤집히므로,
@@ -238,7 +224,6 @@ public class BuildingGenerator : MonoBehaviour
                 overhangBack.transform.localPosition = backPos;
             }
             ApplyMaterial(overhangBack, ModuleId.RoofOverhang, new Vector2(widthScale, 1f));
-            ApplyOutlineIfEnabled(overhangBack, "RoofOverhang_Back_Mesh");
         }
 
         if (style.roofOverhangSidePrefab != null)
@@ -252,12 +237,10 @@ public class BuildingGenerator : MonoBehaviour
             GameObject overhangLeft = SpawnAttachment(style.roofOverhangSidePrefab, transform,
                 new Vector3(0f, currentY, sideZBack), Quaternion.Euler(0f, 90f, 0f), "RoofOverhang_Left");
             ApplyMaterial(overhangLeft, ModuleId.RoofOverhang, Vector2.one);
-            ApplyOutlineToAttachment(overhangLeft);
 
             GameObject overhangRight = SpawnAttachment(style.roofOverhangSidePrefab, transform,
                 new Vector3(widthMeters, currentY, sideZFront), Quaternion.Euler(0f, -90f, 0f), "RoofOverhang_Right");
             ApplyMaterial(overhangRight, ModuleId.RoofOverhang, Vector2.one);
-            ApplyOutlineToAttachment(overhangRight);
         }
 
         _hasGenerated = true;
@@ -349,7 +332,6 @@ public class BuildingGenerator : MonoBehaviour
                 // Pillar_L: 메쉬가 비대칭이라 코너 좌표(0,0)에서 보정값(-0.1, 0.2) 적용 — 실측 고정값
                 GameObject pillarL = SpawnAttachment(pillarPrefab, lobbyParent, new Vector3(-0.1f, 0f, 0.2f), Quaternion.identity, "Pillar_L");
                 ApplyMaterial(pillarL, pillarModuleId, Vector2.one);
-                ApplyOutlineToAttachment(pillarL);
 
                 // Pillar_R: 단순 이동/회전이 아니라 메쉬 자체가 비대칭(노치)이라 좌우 거울 반전이 필요.
                 // X축 음수 스케일로 미러링 + 위치는 좌측과 동일한 오프셋 패턴을 미러링.
@@ -362,7 +344,6 @@ public class BuildingGenerator : MonoBehaviour
                     pillarR.transform.localScale = s;
                 }
                 ApplyMaterial(pillarR, pillarModuleId, Vector2.one);
-                ApplyOutlineToAttachment(pillarR);
             }
         }
     }
@@ -436,7 +417,6 @@ public class BuildingGenerator : MonoBehaviour
 
                 ApplyMaterialToChild(slot, "Frame", frameModuleId, Vector2.one);
                 ApplyMaterialToChild(slot, "Glass", glassModuleId, Vector2.one);
-                ApplyOutlineToChild(slot, "Frame");
 
                 // Glass에 "가게 내부 풍경" Emission 아틀라스 덮어씌우기.
                 // setSeed=randomSeed(건물 시드)로 통일 — 같은 건물의 모든 슬롯이 같은 가게 풍경(세트)을 공유.
@@ -515,7 +495,6 @@ public class BuildingGenerator : MonoBehaviour
             GameObject windowInstance = SpawnAttachment(style.windowPrefab, middleParent, pivotPos, rot, $"Window_{face}_{floor:00}_{i:00}");
             ApplyMaterialToChild(windowInstance, "Frame", ModuleId.WindowFrame, Vector2.one);
             ApplyMaterialToChild(windowInstance, "Glass", ModuleId.WindowGlass, Vector2.one);
-            ApplyOutlineToChild(windowInstance, "Frame");
 
             if (useWindow && windowInstance != null)
             {
@@ -593,7 +572,6 @@ public class BuildingGenerator : MonoBehaviour
         Vector3 landingPos = new Vector3(landingX, landingY, 0f);
         GameObject landing = SpawnAttachment(style.feLandingPrefab, middleParent, landingPos, Quaternion.identity, $"FE_Landing_{floor:00}");
         ApplyMaterial(landing, ModuleId.FE_Landing, Vector2.one);
-        ApplyOutlineToAttachment(landing);
 
         // Stair는 "현재 층 Landing → 다음 층 Landing"을 잇는 모듈.
         // 최상층에서는 더 올라갈 곳이 없으므로 생성하지 않음.
@@ -602,7 +580,6 @@ public class BuildingGenerator : MonoBehaviour
             Vector3 stairPos = new Vector3(landingX, landingY, 0f);
             GameObject stair = SpawnAttachment(style.feStairPrefab, middleParent, stairPos, Quaternion.identity, $"FE_Stair_{floor:00}");
             ApplyMaterial(stair, ModuleId.FE_Stair, Vector2.one);
-            ApplyOutlineToAttachment(stair);
         }
     }
 
@@ -678,67 +655,6 @@ public class BuildingGenerator : MonoBehaviour
         mesh.transform.localScale = scale;
 
         return container;
-    }
-
-    /// <summary>
-    /// useOutline이 켜져있으면 지정한 메쉬 자식에 OutlineToggle을 붙임.
-    /// 반드시 ApplyMaterial() 호출 "이후"에 실행해야 함 — ApplyMaterial이 GetComponentsInChildren&lt;Renderer&gt;()로
-    /// 자식 Renderer를 전부 훑으면서 머티리얼을 덮어쓰는데, 먼저 아웃라인을 만들면 그 Outline 자식 Renderer까지
-    /// 본체 머티리얼로 같이 덮어써져서 아웃라인이 무력화됨.
-    /// </summary>
-    private void ApplyOutlineIfEnabled(GameObject container, string meshObjectName)
-    {
-        if (!useOutline || outlineMaterial == null || container == null) return;
-
-        Transform meshT = container.transform.Find(meshObjectName);
-        if (meshT == null)
-        {
-            Debug.LogWarning($"[BuildingGenerator] '{container.name}'에서 메쉬 자식 '{meshObjectName}'을 못 찾아 아웃라인 적용을 건너뜀.");
-            return;
-        }
-
-        OutlineToggle outline = meshT.GetComponent<OutlineToggle>();
-        if (outline == null) outline = meshT.gameObject.AddComponent<OutlineToggle>();
-
-        outline.outlineMaterial = outlineMaterial;
-        outline.outlineWidth = outlineWidth;
-        outline.outlineColor = outlineColor;
-        outline.CreateOrUpdateOutline();
-    }
-
-    /// <summary>
-    /// Attachment(Pillar, RoofOverhang 등 단일 Renderer를 가진 부착물) 전용.
-    /// instance 자체에 MeshRenderer가 직접 있는 경우에만 동작 — Frame/Glass 분리형은 ApplyOutlineToChild 사용.
-    /// 반드시 ApplyMaterial() 호출 "이후"에 실행 (같은 이유로 머티리얼 덮어쓰기 방지).
-    /// </summary>
-    private void ApplyOutlineToAttachment(GameObject instance)
-    {
-        if (!useOutline || outlineMaterial == null || instance == null) return;
-
-        MeshRenderer renderer = instance.GetComponent<MeshRenderer>();
-        if (renderer == null) return; // Frame/Glass 분리형 등은 여기서 처리 안 함
-
-        OutlineToggle outline = instance.GetComponent<OutlineToggle>();
-        if (outline == null) outline = instance.AddComponent<OutlineToggle>();
-
-        outline.outlineMaterial = outlineMaterial;
-        outline.outlineWidth = outlineWidth;
-        outline.outlineColor = outlineColor;
-        outline.CreateOrUpdateOutline();
-    }
-
-    /// <summary>
-    /// Frame/Glass처럼 자식으로 분리된 구조에서, 특정 자식(보통 "Frame")에만 아웃라인 적용.
-    /// 반드시 ApplyMaterialToChild() 호출 "이후"에 실행.
-    /// </summary>
-    private void ApplyOutlineToChild(GameObject instance, string childName)
-    {
-        if (!useOutline || outlineMaterial == null || instance == null) return;
-
-        Transform child = instance.transform.Find(childName);
-        if (child == null) return;
-
-        ApplyOutlineToAttachment(child.gameObject);
     }
 
     /// <summary>
