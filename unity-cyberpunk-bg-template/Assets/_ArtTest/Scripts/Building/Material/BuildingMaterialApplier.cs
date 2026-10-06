@@ -167,10 +167,11 @@ public static class BuildingMaterialApplier
         // 이 모듈은 Apply()로 한 번, 여기서 또 한 번 — 같은 렌더러에 MPB를 두 번
         // 나눠 설정하는 구조였는데, 이게 Unity의 "Play 종료 시 자동 복원" 과정에서
         // 유독 깨지는 원인으로 확인됨(Lobby/Middle처럼 MPB를 한 번만 쓰는 모듈은 멀쩡함).
-        // renderer.material은 최초 접근 시 sharedMaterial을 자동으로 복제해서
-        // 인스턴스를 만들어주고, 이 인스턴스는 Unity 표준 직렬화 대상이라
-        // Play 진입/종료 어느 쪽에서도 안전하게 보존된다.
-        Material instMat = renderer.material;
+        // 인스턴스 머티리얼은 Unity 표준 직렬화 대상이라 Play 진입/종료 어느 쪽에서도
+        // 안전하게 보존된다. (renderer.material은 에디트 모드에서 누수 경고가 나므로
+        // GetOrCreateInstanceMaterial로 직접 복제한다)
+        Material instMat = GetOrCreateInstanceMaterial(renderer);
+        if (instMat == null) return;
         instMat.SetTexture(EmissionTexId, atlas);
         instMat.SetVector(AtlasOffsetScaleId, new Vector4(offsetX, offsetY, tileX, tileY));
         instMat.SetColor(EmissionColorId, emissionColor);
@@ -230,7 +231,8 @@ public static class BuildingMaterialApplier
         }
 
         // ★ ApplyShowWindowGlassEmission과 동일한 이유로 인스턴스 머티리얼 사용
-        Material instMat = renderer.material;
+        Material instMat = GetOrCreateInstanceMaterial(renderer);
+        if (instMat == null) return;
         instMat.SetTexture(EmissionTexId, atlas);
         instMat.SetVector(AtlasOffsetScaleId, new Vector4(0f, offsetY, 1f, tileY));
         instMat.SetColor(EmissionColorId, emissionColor);
@@ -263,7 +265,8 @@ public static class BuildingMaterialApplier
         }
 
         // ★ ApplyShowWindowGlassEmission과 동일한 이유로 인스턴스 머티리얼 사용
-        Material instMat = renderer.material;
+        Material instMat = GetOrCreateInstanceMaterial(renderer);
+        if (instMat == null) return;
         if (offTex != null) instMat.SetTexture(OffTexId, offTex);
         instMat.SetColor(LitColorId, litColor);
         instMat.SetFloat(LitChanceId, litChance);
@@ -273,5 +276,50 @@ public static class BuildingMaterialApplier
 
         // ★ ApplyShowWindowGlassEmission과 동일한 이유로 남은 MPB 클리어
         renderer.SetPropertyBlock(null);
+    }
+
+    private const string InstanceSuffix = " (Instance)";
+
+    /// <summary>
+    /// renderer.material과 같은 결과(이 렌더러 전용 머티리얼 복제본)를 만들되,
+    /// 에디트 모드에서도 누수 경고 없이 동작하도록 직접 복제해서 sharedMaterial에 넣는다.
+    /// 이미 이 렌더러 전용 복제본이면 새로 만들지 않고 그대로 재사용.
+    /// </summary>
+    private static Material GetOrCreateInstanceMaterial(Renderer renderer)
+    {
+        Material shared = renderer.sharedMaterial;
+        if (shared == null) return null;
+        if (IsInstanceMaterial(shared)) return shared;
+
+        var inst = new Material(shared) { name = shared.name + InstanceSuffix };
+        renderer.sharedMaterial = inst;
+        return inst;
+    }
+
+    private static bool IsInstanceMaterial(Material mat)
+    {
+        if (mat == null || !mat.name.EndsWith(InstanceSuffix)) return false;
+#if UNITY_EDITOR
+        // 프로젝트에 저장된 머티리얼 애셋은 이름이 우연히 겹쳐도 절대 지우지 않도록 제외
+        if (UnityEditor.EditorUtility.IsPersistent(mat)) return false;
+#endif
+        return true;
+    }
+
+    /// <summary>
+    /// root 아래 렌더러들이 들고 있는 인스턴스 머티리얼(GetOrCreateInstanceMaterial로 만든 것)을 파괴.
+    /// 오브젝트만 지우면 복제된 머티리얼은 메모리에 남으므로, Clear 직전에 호출한다.
+    /// </summary>
+    public static void DestroyInstanceMaterials(GameObject root)
+    {
+        if (root == null) return;
+        foreach (Renderer renderer in root.GetComponentsInChildren<Renderer>(true))
+        {
+            Material mat = renderer.sharedMaterial;
+            if (!IsInstanceMaterial(mat)) continue;
+            renderer.sharedMaterial = null;
+            if (Application.isPlaying) Object.Destroy(mat);
+            else Object.DestroyImmediate(mat);
+        }
     }
 }

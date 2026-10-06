@@ -733,8 +733,6 @@ public class BuildingGenerator : MonoBehaviour
 
         BuildingMaterialApplier.Apply(instance, style.materialStyle, moduleId, instanceSeed, tilingScale,
                                        overrideColor, dirtSeedOverride, noiseSeedOverride);
-
-        Debug.Log($"[체크] {instance.name} seed={CombineSeed(randomSeed, instance.name)}");
     }
 
     /// <summary>
@@ -768,6 +766,7 @@ public class BuildingGenerator : MonoBehaviour
         for (int i = transform.childCount - 1; i >= 0; i--)
         {
             GameObject child = transform.GetChild(i).gameObject;
+            BuildingMaterialApplier.DestroyInstanceMaterials(child);
 #if UNITY_EDITOR
             if (!Application.isPlaying)
             {
