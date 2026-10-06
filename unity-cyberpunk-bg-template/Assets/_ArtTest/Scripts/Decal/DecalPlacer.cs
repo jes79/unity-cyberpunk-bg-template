@@ -21,11 +21,19 @@ public class DecalPlacer : MonoBehaviour
 
     private DecalProjector _projector;
 
-    // 인스펙터에서 값을 바꿀 때마다 즉시 반영 — 에디터에서 배치하면서 바로 확인 가능
+#if UNITY_EDITOR
+    // 인스펙터에서 값을 바꿀 때마다 즉시 반영 — 에디터에서 배치하면서 바로 확인 가능.
+    // OnValidate 안에서 바로 머티리얼을 만들거나 바꾸면 씬 로딩/임포트 도중에 실행되어 경고가 날 수 있으므로,
+    // 에디터의 다음 업데이트로 한 박자 미뤄서 실행한다.
     private void OnValidate()
     {
-        Apply();
+        UnityEditor.EditorApplication.delayCall += () =>
+        {
+            // 프리팹 애셋 안(씬 밖)에서는 실행하지 않음 — 저장 안 되는 임시 머티리얼이 프리팹 애셋에 박히는 것 방지
+            if (this != null && gameObject.scene.IsValid()) Apply();
+        };
     }
+#endif
 
     [ContextMenu("Apply")]
     public void Apply()
@@ -34,9 +42,17 @@ public class DecalPlacer : MonoBehaviour
         if (atlasIndex < 0 || atlasIndex >= style.atlases.Length) return;
 
         int maxDesign = style.atlases[atlasIndex].DesignCount;
+        if (maxDesign <= 0)
+        {
+            Debug.LogWarning($"{name}: atlases[{atlasIndex}]의 gridSize가 0이라 디자인이 없습니다.");
+            return;
+        }
         designIndex = Mathf.Clamp(designIndex, 0, maxDesign - 1);
 
+        Material mat = style.GetOrCreateMaterial(atlasIndex, designIndex);
+        if (mat == null) return;
+
         if (_projector == null) _projector = GetComponent<DecalProjector>();
-        _projector.material = style.GetOrCreateMaterial(atlasIndex, designIndex);
+        _projector.material = mat;
     }
 }

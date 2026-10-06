@@ -296,7 +296,7 @@ public static class BuildingMaterialApplier
         return inst;
     }
 
-    private static bool IsInstanceMaterial(Material mat)
+    public static bool IsInstanceMaterial(Material mat)
     {
         if (mat == null || !mat.name.EndsWith(InstanceSuffix)) return false;
 #if UNITY_EDITOR

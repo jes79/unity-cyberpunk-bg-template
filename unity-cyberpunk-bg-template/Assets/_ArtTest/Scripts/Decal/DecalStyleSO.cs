@@ -53,6 +53,12 @@ public class DecalStyleSO : ScriptableObject
             return decalMaterialTemplate;
         }
 
+        if (decalMaterialTemplate == null)
+        {
+            Debug.LogError($"{name}: decalMaterialTemplate이 비어있습니다. SG_Decal 기반 머티리얼을 연결하세요.");
+            return null;
+        }
+
         var key = (atlasIndex, designIndex);
         if (_materialPool.TryGetValue(key, out var cached) && cached != null)
             return cached; // 이미 만든 조합이면 재사용 → 새 객체 안 만듦

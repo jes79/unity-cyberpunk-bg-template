@@ -115,7 +115,7 @@ public class BuildingGenerator : MonoBehaviour
     {
         style = newStyle;
 
-        if (style != null && newWidthMeters % (int)style.baseModuleWidth != 0)
+        if (style != null && style.baseModuleWidth >= 1f && newWidthMeters % (int)style.baseModuleWidth != 0)
         {
             Debug.LogWarning($"[BuildingGenerator] widthMeters({newWidthMeters})는 " +
                               $"{style.baseModuleWidth}의 배수가 아님. 가장 가까운 배수로 보정함.");
@@ -135,7 +135,40 @@ public class BuildingGenerator : MonoBehaviour
             Debug.LogWarning("[BuildingGenerator] style이 비어있어 생성 불가.");
             return;
         }
+        if (style.baseModuleWidth < 1f)
+        {
+            Debug.LogWarning("[BuildingGenerator] style.baseModuleWidth는 1 이상이어야 함 (현재 " +
+                             $"{style.baseModuleWidth}). 생성 불가.");
+            return;
+        }
+        if (buildingType == BuildingType.Commercial && shopLobbyPattern != null
+            && shopLobbyPattern.Length > 0 && shopLobbyPattern.Length != ModuleCount)
+        {
+            Debug.LogWarning($"[BuildingGenerator] shopLobbyPattern 길이({shopLobbyPattern.Length})가 " +
+                             $"건물 폭의 슬롯 수({ModuleCount})와 다름 — 쇼윈도가 비거나 건물 밖으로 삐져나올 수 있음.");
+        }
 
+        // 전역 Random을 잠시 빌려 쓰고, 끝나면 원래 상태로 되돌린다.
+        // (Random.InitState는 게임 전체가 공유하는 Random을 덮어쓰므로, 되돌리지 않으면
+        //  같은 프레임에 Random을 쓰는 다른 스크립트의 결과까지 바뀌어버림)
+        Random.State previousRandomState = Random.state;
+        try
+        {
+            GenerateModules();
+        }
+        finally
+        {
+            Random.state = previousRandomState;
+        }
+
+        _hasGenerated = true;
+#if UNITY_EDITOR
+        UnityEditor.EditorUtility.SetDirty(this);
+#endif
+    }
+
+    private void GenerateModules()
+    {
         Clear();
 
         Random.InitState(randomSeed);
@@ -242,11 +275,6 @@ public class BuildingGenerator : MonoBehaviour
                 new Vector3(widthMeters, currentY, sideZFront), Quaternion.Euler(0f, -90f, 0f), "RoofOverhang_Right");
             ApplyMaterial(overhangRight, ModuleId.RoofOverhang, Vector2.one);
         }
-
-        _hasGenerated = true;
-#if UNITY_EDITOR
-        UnityEditor.EditorUtility.SetDirty(this);
-#endif
     }
 
     /// <summary>

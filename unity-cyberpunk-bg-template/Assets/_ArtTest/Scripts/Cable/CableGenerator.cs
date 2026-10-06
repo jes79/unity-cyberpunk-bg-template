@@ -52,6 +52,22 @@ public class CableGenerator : MonoBehaviour
              "머티리얼을 다시 만드는 게 아니라 좌표 2개만 갱신하는 거라 비용은 작습니다.")]
     public bool liveFollowAnchors = true;
 
+    private const string InstanceSuffix = " (Cable Instance)";
+
+    private static readonly int AnchorAId = Shader.PropertyToID("_AnchorA");
+    private static readonly int AnchorBId = Shader.PropertyToID("_AnchorB");
+    private static readonly int SagAmountId = Shader.PropertyToID("_SagAmount");
+    private static readonly int SagPeakTId = Shader.PropertyToID("_SagPeakT");
+    private static readonly int MeshLengthId = Shader.PropertyToID("_MeshLength");
+    private static readonly int WindSpeedId = Shader.PropertyToID("_WindSpeed");
+    private static readonly int WindStrengthId = Shader.PropertyToID("_WindStrength");
+    private static readonly int NoiseScaleId = Shader.PropertyToID("_NoiseScale");
+    private static readonly int TurbulenceId = Shader.PropertyToID("_Turbulence");
+    private static readonly int BaseTexId = Shader.PropertyToID("_BaseTex");
+    private static readonly int BaseColorTintId = Shader.PropertyToID("_BaseColorTint");
+    private static readonly int NormalTexId = Shader.PropertyToID("_NormalTex");
+    private static readonly int OrmTexId = Shader.PropertyToID("_ORMTex");
+
     private MeshRenderer _renderer;
     private Material _instanceMat;
 
@@ -59,6 +75,10 @@ public class CableGenerator : MonoBehaviour
     // [ExecuteAlways] 덕분에 Edit 모드에서 컴포넌트를 붙이는 순간에도 호출됨
     private void Awake()
     {
+        // PoleLineGenerator가 Instantiate하는 순간엔 앵커가 아직 연결 전이라 Awake가 먼저 돈다.
+        // 그때마다 에러가 찍히지 않도록, 자동 호출에서는 준비가 안 됐으면 조용히 건너뛴다
+        // (PoleLineGenerator가 앵커를 넣은 뒤 Generate()를 직접 다시 호출함).
+        if (sharedCableMaterial == null || anchorA == null || anchorB == null) return;
         Generate();
     }
 
@@ -71,8 +91,9 @@ public class CableGenerator : MonoBehaviour
         if (!liveFollowAnchors) return;
         if (_instanceMat == null || anchorA == null || anchorB == null) return;
 
-        _instanceMat.SetVector("_AnchorA", anchorA.position);
-        _instanceMat.SetVector("_AnchorB", anchorB.position);
+        _instanceMat.SetVector(AnchorAId, anchorA.position);
+        _instanceMat.SetVector(AnchorBId, anchorB.position);
+        UpdateBounds();
     }
 
     [ContextMenu("Generate")]
@@ -91,33 +112,76 @@ public class CableGenerator : MonoBehaviour
 
         if (_renderer == null) _renderer = GetComponent<MeshRenderer>();
 
-        // 인스턴스 머티리얼 생성 — sharedMaterial이 아니라 이 오브젝트 전용 복제본
-        _instanceMat = new Material(sharedCableMaterial);
-        _renderer.sharedMaterial = _instanceMat;
+        // 인스턴스 머티리얼 — sharedMaterial이 아니라 이 오브젝트 전용 복제본.
+        // Generate()를 여러 번 눌러도 매번 새로 만들지 않고, 이미 있는 복제본을 재사용한다
+        // (씬을 다시 열었을 때 씬에 저장돼 있던 복제본도 여기서 다시 찾아 씀 → 머티리얼 누수 방지).
+        _instanceMat = FindOwnInstanceMaterial();
+        if (_instanceMat == null)
+        {
+            _instanceMat = new Material(sharedCableMaterial) { name = sharedCableMaterial.name + InstanceSuffix };
+            _renderer.sharedMaterial = _instanceMat;
+        }
+        else
+        {
+            // 템플릿 머티리얼을 바꿨을 수도 있으므로, 재사용할 때도 템플릿 값을 다시 복사해서 새로 만든 것과 똑같이 맞춤
+            _instanceMat.shader = sharedCableMaterial.shader;
+            _instanceMat.CopyPropertiesFromMaterial(sharedCableMaterial);
+        }
 
         ApplyProperties();
+        UpdateBounds();
 
         // 다른 곳에서 걸어둔 MPB가 우선순위를 가져가는 걸 방지 (STEP 2-5 9절 세 번째 버그와 동일 패턴)
         _renderer.SetPropertyBlock(null);
     }
 
+    /// <summary>
+    /// 렌더러가 이미 이 케이블 전용 복제본을 들고 있으면 반환. (프로젝트에 저장된 머티리얼 애셋은 제외)
+    /// </summary>
+    private Material FindOwnInstanceMaterial()
+    {
+        Material current = _renderer.sharedMaterial;
+        if (current == null || !current.name.EndsWith(InstanceSuffix)) return null;
+#if UNITY_EDITOR
+        if (UnityEditor.EditorUtility.IsPersistent(current)) return null;
+#endif
+        return current;
+    }
+
     private void ApplyProperties()
     {
-        _instanceMat.SetVector("_AnchorA", anchorA.position);
-        _instanceMat.SetVector("_AnchorB", anchorB.position);
-        _instanceMat.SetFloat("_SagAmount", sagAmount);
-        _instanceMat.SetFloat("_SagPeakT", sagPeakT);
-        _instanceMat.SetFloat("_MeshLength", meshLength);
+        _instanceMat.SetVector(AnchorAId, anchorA.position);
+        _instanceMat.SetVector(AnchorBId, anchorB.position);
+        _instanceMat.SetFloat(SagAmountId, sagAmount);
+        _instanceMat.SetFloat(SagPeakTId, sagPeakT);
+        _instanceMat.SetFloat(MeshLengthId, meshLength);
 
-        _instanceMat.SetFloat("_WindSpeed", windSpeed);
-        _instanceMat.SetFloat("_WindStrength", windStrength);
-        _instanceMat.SetFloat("_NoiseScale", noiseScale);
-        _instanceMat.SetFloat("_Turbulence", turbulence);
+        _instanceMat.SetFloat(WindSpeedId, windSpeed);
+        _instanceMat.SetFloat(WindStrengthId, windStrength);
+        _instanceMat.SetFloat(NoiseScaleId, noiseScale);
+        _instanceMat.SetFloat(TurbulenceId, turbulence);
 
-        if (baseTex != null) _instanceMat.SetTexture("_BaseTex", baseTex);
-        _instanceMat.SetColor("_BaseColorTint", baseColorTint);
-        if (normalTex != null) _instanceMat.SetTexture("_NormalTex", normalTex);
-        if (ormTex != null) _instanceMat.SetTexture("_ORMTex", ormTex);
+        if (baseTex != null) _instanceMat.SetTexture(BaseTexId, baseTex);
+        _instanceMat.SetColor(BaseColorTintId, baseColorTint);
+        if (normalTex != null) _instanceMat.SetTexture(NormalTexId, normalTex);
+        if (ormTex != null) _instanceMat.SetTexture(OrmTexId, ormTex);
+    }
+
+    /// <summary>
+    /// 컬링용 바운딩 박스를 실제 케이블이 그려지는 위치(앵커 A~B + 처짐 + 흔들림)로 맞춘다.
+    /// 셰이더가 정점을 앵커 위치로 옮기기 때문에, 메쉬 원래 위치 기준의 bounds를 그대로 두면
+    /// 카메라가 메쉬 원래 위치를 벗어나는 순간 케이블이 화면에 있어도 통째로 사라진다(프러스텀 컬링).
+    /// </summary>
+    private void UpdateBounds()
+    {
+        if (_renderer == null || anchorA == null || anchorB == null) return;
+
+        var bounds = new Bounds(anchorA.position, Vector3.zero);
+        bounds.Encapsulate(anchorB.position);
+        bounds.Encapsulate(bounds.center + Vector3.down * sagAmount);
+        // 케이블 두께 + 바람 흔들림 여유분
+        bounds.Expand(Mathf.Abs(windStrength) * 2f + 0.5f);
+        _renderer.bounds = bounds;
     }
 
     // 에디터에서 앵커를 옮기거나 값을 바꿀 때 씬 뷰에서 바로 확인하고 싶으면 사용
@@ -136,8 +200,8 @@ public class CableGenerator : MonoBehaviour
         Gizmos.DrawSphere(anchorB.position, 0.05f);
     }
 
-    // [ExecuteAlways]로 Edit 모드에서도 Generate()가 반복 호출될 수 있어,
     // 오브젝트가 파괴될 때 만들어둔 인스턴스 머티리얼도 같이 정리 (메모리 누수 방지)
+    // Edit 모드에서 지운 뒤 Ctrl+Z로 되살리면 Awake()가 다시 돌면서 머티리얼을 새로 만들어 준다.
     private void OnDestroy()
     {
         if (_instanceMat == null) return;
