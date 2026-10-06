@@ -15,14 +15,20 @@
 // Outputs
 //   OutUV    : Vector2
 
+#ifndef ATLASINDEXTOUV_INCLUDED
+#define ATLASINDEXTOUV_INCLUDED
+
 void AtlasIndexToUV_float(
     float2 UV, float Index, float2 GridSize,
     out float2 OutUV)
 {
     // Index: 0부터 시작. 좌상단(row0, col0)부터 가로로 채워나가는 순서.
     // (12.2절 쇼윈도 아틀라스와 동일 규칙 — index → column 그대로 매칭)
-    float col = fmod(Index, GridSize.x);
-    float row = floor(Index / GridSize.x);
+    // 머티리얼에서 넘어온 float 인덱스가 2.9999처럼 살짝 모자라면 floor가 2로 내려서
+    // 옆 칸 디자인이 나오므로, 먼저 가장 가까운 정수로 반올림한다.
+    float index = floor(Index + 0.5);
+    float col = fmod(index, GridSize.x);
+    float row = floor(index / GridSize.x);
 
     float2 tile = 1.0 / GridSize;
 
@@ -35,3 +41,15 @@ void AtlasIndexToUV_float(
 
     OutUV = UV * tile + offset;
 }
+
+// half 버전 — 그래프/노드 Precision을 Half로 바꿔도 컴파일되도록 _float를 그대로 호출
+void AtlasIndexToUV_half(
+    half2 UV, half Index, half2 GridSize,
+    out half2 OutUV)
+{
+    float2 outUV;
+    AtlasIndexToUV_float(UV, Index, GridSize, outUV);
+    OutUV = outUV;
+}
+
+#endif // ATLASINDEXTOUV_INCLUDED

@@ -31,6 +31,9 @@
 //     되돌린 뒤 Vertex Position 소켓에 연결해야 한다. 빼먹으면 오브젝트가 씬 원점 쪽으로
 //     순간이동한 것처럼 보인다.
 
+#ifndef WINDSWAY_INCLUDED
+#define WINDSWAY_INCLUDED
+
 float WindSway_Hash21(float2 p)
 {
     float h = dot(p, float2(127.1, 311.7));
@@ -64,3 +67,19 @@ void WindSway_float(
     float3 offset = float3(dir.x, 0, dir.y) * combined * saturate(Weight) * WindStrength;
     DisplacedWorldPos = VertexWorldPos + offset;
 }
+
+// half 버전 — 그래프/노드 Precision을 Half로 바꿔도 컴파일되도록 _float를 그대로 호출
+// (월드 좌표는 half로는 정밀도가 부족하므로, 버텍스 애니메이션 그래프는 Float 유지를 권장)
+void WindSway_half(
+    half3 VertexWorldPos, half3 PivotWorldPos, half Weight,
+    half2 WindDirection, half WindSpeed, half WindStrength,
+    half NoiseScale, half Turbulence, half Time,
+    out half3 DisplacedWorldPos)
+{
+    float3 displaced;
+    WindSway_float(VertexWorldPos, PivotWorldPos, Weight, WindDirection, WindSpeed, WindStrength,
+                   NoiseScale, Turbulence, Time, displaced);
+    DisplacedWorldPos = displaced;
+}
+
+#endif // WINDSWAY_INCLUDED

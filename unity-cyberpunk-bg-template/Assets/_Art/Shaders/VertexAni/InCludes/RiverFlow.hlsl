@@ -24,6 +24,9 @@
 //   DisplacedWorldPos : Vector3  → 원본 VertexWorldPos에 높이만 더한 결과
 //                                  (3.9절 원칙 — "대체"가 아니라 "더하기")
 
+#ifndef RIVERFLOW_INCLUDED
+#define RIVERFLOW_INCLUDED
+
 float RiverFlow_Hash21(float2 p)
 {
     float h = dot(p, float2(127.1, 311.7));
@@ -54,3 +57,19 @@ void RiverFlow_float(
     // 원본 위치에 "더하기" — 통째로 대체하면 3장에서 겪은 것과 같은 뭉개짐 버그 재발
     DisplacedWorldPos = VertexWorldPos + float3(0, height, 0);
 }
+
+// half 버전 — 그래프/노드 Precision을 Half로 바꿔도 컴파일되도록 _float를 그대로 호출
+// (월드 좌표는 half로는 정밀도가 부족하므로, 버텍스 애니메이션 그래프는 Float 유지를 권장)
+void RiverFlow_half(
+    half3 VertexWorldPos, half2 FlowDirectionXZ, half FlowSpeed,
+    half WaveAmplitude, half WaveFrequency, half NoiseScale, half Turbulence,
+    half TimeValue,
+    out half3 DisplacedWorldPos)
+{
+    float3 displaced;
+    RiverFlow_float(VertexWorldPos, FlowDirectionXZ, FlowSpeed, WaveAmplitude, WaveFrequency,
+                    NoiseScale, Turbulence, TimeValue, displaced);
+    DisplacedWorldPos = displaced;
+}
+
+#endif // RIVERFLOW_INCLUDED

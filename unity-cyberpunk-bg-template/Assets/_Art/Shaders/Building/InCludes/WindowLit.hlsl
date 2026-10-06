@@ -9,7 +9,12 @@
 // 시드를 C#이 넘겨주지 않고 오브젝트 좌표에서 직접 뽑아내므로, 이 머티리얼을 아무
 // 오브젝트의 Glass에든 그냥 꽂으면 바로 동작한다 (MaterialPropertyBlock/코드 불필요).
 
-float Hash21(float2 p)
+#ifndef WINDOWLIT_INCLUDED
+#define WINDOWLIT_INCLUDED
+
+// 함수 이름 앞에 파일명(WindowLit_)을 붙여서, 다른 .hlsl과 한 그래프에서 같이 써도
+// 이름이 겹치지 않게 함 (RiverFlow_Hash21, WindSway_Hash21과 같은 규칙)
+float WindowLit_Hash21(float2 p)
 {
     float h = dot(p, float2(127.1, 311.7));
     return frac(sin(h) * 43758.5453123);
@@ -27,13 +32,13 @@ void WindowLit_float(
     float cycle = floor(Time / max(ChangeInterval, 0.001));
 
     // 이 창문이 "지금 사이클에" 켜져 있는지
-    float litRand = Hash21(windowId + cycle * 13.37);
+    float litRand = WindowLit_Hash21(windowId + cycle * 13.37);
     bool isLit = litRand < LitChance;
 
     // 이 창문이 "깜빡이는 창문"인지는 사이클과 무관하게 고정 (windowId만 사용)
     float2 flickerHashInput = windowId * 1.93;
-    float flickerRand = Hash21(flickerHashInput);
-    float flickerPhase = Hash21(flickerHashInput + 7.77) * 6.2831; // 0~2π
+    float flickerRand = WindowLit_Hash21(flickerHashInput);
+    float flickerPhase = WindowLit_Hash21(flickerHashInput + 7.77) * 6.2831; // 0~2π
 
     bool isFlicker = flickerRand < FlickerChance;
 
@@ -51,3 +56,16 @@ void WindowLit_float(
         }
     }
 }
+
+// half 버전 — 그래프/노드 Precision을 Half로 바꿔도 컴파일되도록 _float를 그대로 호출
+void WindowLit_half(
+    half3 PivotWorldPos, half LitChance, half FlickerChance,
+    half ChangeInterval, half FlickerSpeed, half Time,
+    out half Brightness)
+{
+    float brightness;
+    WindowLit_float(PivotWorldPos, LitChance, FlickerChance, ChangeInterval, FlickerSpeed, Time, brightness);
+    Brightness = brightness;
+}
+
+#endif // WINDOWLIT_INCLUDED

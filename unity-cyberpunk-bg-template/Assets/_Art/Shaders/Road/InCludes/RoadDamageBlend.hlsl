@@ -20,6 +20,9 @@
 // Fresnel 효과가 비스듬한 각도에서 알아서 강한 반사를 만들어준다 — Reflection Probe와
 // 결합하면 그것으로 충분하다 (6.5절).
 
+#ifndef ROADDAMAGEBLEND_INCLUDED
+#define ROADDAMAGEBLEND_INCLUDED
+
 void RoadDamageBlend_float(
     float3 BaseColor, float3 CrackColor, float3 DirtColor,
     float3 BaseNormal, float3 DamageNormal,
@@ -54,3 +57,25 @@ void RoadDamageBlend_float(
     OutNormal = normal;
     OutSmoothness = smoothness;
 }
+
+// half 버전 — 그래프/노드 Precision을 Half로 바꿔도 컴파일되도록 _float를 그대로 호출
+void RoadDamageBlend_half(
+    half3 BaseColor, half3 CrackColor, half3 DirtColor,
+    half3 BaseNormal, half3 DamageNormal,
+    half BaseSmoothness, half WetSmoothness,
+    half DamageMask, half DirtMask, half PuddleMask,
+    half DamageThreshold, half DirtThreshold, half PuddleThreshold,
+    out half3 OutColor, out half3 OutNormal, out half OutSmoothness)
+{
+    float3 outColor, outNormal;
+    float outSmoothness;
+    RoadDamageBlend_float(BaseColor, CrackColor, DirtColor, BaseNormal, DamageNormal,
+                          BaseSmoothness, WetSmoothness, DamageMask, DirtMask, PuddleMask,
+                          DamageThreshold, DirtThreshold, PuddleThreshold,
+                          outColor, outNormal, outSmoothness);
+    OutColor = outColor;
+    OutNormal = outNormal;
+    OutSmoothness = outSmoothness;
+}
+
+#endif // ROADDAMAGEBLEND_INCLUDED

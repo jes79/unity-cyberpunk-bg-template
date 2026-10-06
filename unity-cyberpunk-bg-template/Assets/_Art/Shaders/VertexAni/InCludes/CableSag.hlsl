@@ -35,6 +35,9 @@
 //   T              : Float    → Weight 계산 및 위상 기준에 재사용
 //   CableDir       : Vector3  → WindDirectionXZ를 케이블 진행축에 수직으로 계산할 때 재사용 (3.4절)
 
+#ifndef CABLESAG_INCLUDED
+#define CABLESAG_INCLUDED
+
 void CableSag_float(
     float3 ObjectPos, float3 AnchorA, float3 AnchorB, float SagAmount, float MeshLength,
     float SagPeakT,
@@ -78,3 +81,21 @@ void CableSag_float(
     SaggedWorldPos = spine + radial;
     CableDir = dir;
 }
+
+// half 버전 — 그래프/노드 Precision을 Half로 바꿔도 컴파일되도록 _float를 그대로 호출
+// (월드 좌표는 half로는 정밀도가 부족하므로, 버텍스 애니메이션 그래프는 Float 유지를 권장)
+void CableSag_half(
+    half3 ObjectPos, half3 AnchorA, half3 AnchorB, half SagAmount, half MeshLength,
+    half SagPeakT,
+    out half3 SaggedWorldPos, out half T, out half3 CableDir)
+{
+    float3 saggedWorldPos, cableDir;
+    float t;
+    CableSag_float(ObjectPos, AnchorA, AnchorB, SagAmount, MeshLength, SagPeakT,
+                   saggedWorldPos, t, cableDir);
+    SaggedWorldPos = saggedWorldPos;
+    T = t;
+    CableDir = cableDir;
+}
+
+#endif // CABLESAG_INCLUDED

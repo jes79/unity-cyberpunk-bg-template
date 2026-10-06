@@ -21,6 +21,9 @@
 //          광택은 그대로면 "스티커 붙인 것처럼" 부자연스러워 보임.
 //       DirtIntensity(0~1, MaterialPropertyBlock에서 건물마다 다르게 전달)로 전체 강도를 조절.
 
+#ifndef DIRTBLEND_INCLUDED
+#define DIRTBLEND_INCLUDED
+
 void DirtBlend_float(
     float3 BaseColor, float3 UnderLayerColor,
     float DirtMaskSample,
@@ -59,3 +62,5 @@ void DirtBlend_half(
     OutSmoothness = lerp(BaseSmoothness, DirtSmoothness, blend);
     OutMetallic = lerp(BaseMetallic, DirtMetallic, blend);
 }
+
+#endif // DIRTBLEND_INCLUDED
