@@ -1,29 +1,29 @@
 # Unity 6 URP — 사이버펑크 배경 제작 템플릿
 
-Unity 6.3 LTS / URP 기반 사이버펑크 도시 배경 제작용 템플릿 프로젝트입니다.
+Unity 6 / URP 기반 사이버펑크 도시 배경 제작용 템플릿 프로젝트입니다.
 새 배경 프로젝트를 시작할 때 클론해서 모델과 텍스처만 교체하면 바로 작업을 시작할 수 있도록 구성했습니다.
 
 ## 환경
 
 | 항목 | 버전 |
 |---|---|
-| Unity | 6.3 LTS (6000.3.9f1) |
+| Unity | 6000.6.4f1 (6.3 LTS 6000.3.9f1에서 제작 후 업그레이드) |
 | 렌더 파이프라인 | URP (Forward+) |
 | 셰이더 | HLSL + Shader Graph 병행 |
 
 ## 시작하기
 
 ```bash
-git clone https://github.com/아이디/unity-cyberpunk-bg-template
+git clone https://github.com/jes79/unity-cyberpunk-bg-template
 cd unity-cyberpunk-bg-template
 git lfs pull
 ```
 
-Unity Hub에서 6000.3.9f1 버전으로 프로젝트를 엽니다.
+Unity Hub에서 6000.6.4f1 버전으로 프로젝트를 엽니다.
 
 ## 폴더 구조
 
-Unity URP 템플릿이 기본으로 생성하는 `Settings`, `TutorialInfo`, `InputSystem_Actions`, `Readme`, `Scenes` 등은 그대로 두고 손대지 않습니다. 우리가 작업하는 영역은 `_Art`와 `_ArtTest` 두 폴더로 한정합니다.
+Unity URP 템플릿이 기본으로 생성하는 `Settings`, `TutorialInfo`, `InputSystem_Actions`, `Readme` 등은 그대로 두고 손대지 않습니다. 우리가 작업하는 영역은 `_Art`와 `_ArtTest` 두 폴더로 한정합니다.
 
 ```
 Assets/
@@ -31,7 +31,6 @@ Assets/
 ├── TutorialInfo/       Unity 기본 생성 — 손대지 않음
 ├── InputSystem_Actions Unity 기본 생성 — 손대지 않음
 ├── Readme              Unity 기본 생성 — 손대지 않음
-├── Scenes/             Unity 기본 생성 — 손대지 않음
 │
 ├── _Art/               아트팀 실 사용 리소스
 │   ├── Shaders/         셰이더 (HLSL / Shader Graph)
